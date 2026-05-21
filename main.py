@@ -167,6 +167,10 @@ def load_routes(all_airports: list[Airport]) -> list[Route]:
 def get_airport_with_dataset_id(id: int, a: list[Airport]) -> Airport | None:
     return list(filter(lambda t: t.dataset_id == id, a))[0]
 
+
+def get_airport_with_internal_id(genid: int, a: list[Airport]) -> Airport | None:
+    return list(filter(lambda t: t.new_id == genid, a))[0]
+
 def calc_distance(s_data: Airport, d_data: Airport) -> float:
     s_lat_rad = np.radians(s_data.latitude)
     s_long_rad = np.radians(s_data.longitude)
@@ -183,27 +187,28 @@ def calc_distance(s_data: Airport, d_data: Airport) -> float:
 
     return d
 
-# def create_graph(airports: list[Airport], routes: list[Route]):
-#     """
-#     Create the graph and return the adjacency matrix
-#     :param airports:
-#     :param routes:
-#     :return:
-#     """
-#     tot_airports = len(airports)
-#     # Creo una matrice identità tot_airports x tot_airports
-#     adj_dict: dict[int, float] = dict()
-#
-#     for route in routes:
-#         s = route.src_dataset_id
-#         s_data = get_airport_with_dataset_id(s, airports)
-#         d = route.dest_dataset_id
-#         d_data = get_airport_with_dataset_id(d, airports)
-#
-#         if adj_dict[s][d] == -1:
-#             matrix[s][d] = calc_distance(s_data, d_data)
-#
-#     return matrix
+def create_graph(airports: list[Airport], routes: list[Route]):
+    """
+    Create the graph and return the adjacency matrix
+    :param airports:
+    :param routes:
+    :return:
+    """
+    tot_airports = len(airports)
+    # Creo una matrice identità tot_airports x tot_airports
+    matrix = np.full((tot_airports, tot_airports), -1)
+    np.fill_diagonal(matrix, 0)
+
+    for route in routes:
+        s = route.sd[0]         # internal id of the source airport (not the dataset one)
+        s_data = get_airport_with_internal_id(s, airports)
+        d = route.sd[1]         # internal id of the destination airport (not the dataset one)
+        d_data = get_airport_with_internal_id(d, airports)
+
+        if matrix[s][d] == -1:
+            matrix[s][d] = calc_distance(s_data, d_data)
+
+    return matrix
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
@@ -216,5 +221,5 @@ if __name__ == '__main__':
     routes = load_routes(european_airports)
     print(f"Loaded {len(routes)} routes")
 
-    #matrix = create_graph(european_airports, routes)
-    #print(matrix)
+    matrix = create_graph(european_airports, routes)
+    print(matrix)
