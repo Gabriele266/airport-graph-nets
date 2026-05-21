@@ -1,14 +1,10 @@
-# This is a sample Python script.
-
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
-
 from dataclasses import dataclass
 import numpy as np
 import math
 import csv
+import time
 
-# List with all the included countries in this simulation
+# Lista con i nomi di tutti i paesi europei che vogliamo includere
 included_countries = [
     "Albania",
     "Andorra",
@@ -56,6 +52,8 @@ included_countries = [
 ]
 
 # Matrice di adiacenza
+# Ad ogni aereoporto viene assegnato un ID interno (diverso da quello fornito dal dataset) in modo tale da semplificare la creazione
+# della matrice di adiacenza. Gli id forniti dal dataset (marcati con _dataset) vengono comunque mantenuti per facilitare l'accesso alle informazioni
 # ---------------------------- nodo
 # |     a_sd
 # |
@@ -69,17 +67,14 @@ included_countries = [
 # Nel nostro caso il costo è la distanza tra i due aereoporti in linea d'aria
 # La riga indica l'aereoporto sorgente
 
-# Ogni volta che carico una rotta, aggiungo una tupla (i, j) in un set, se non esiste già
-# Così escludo tutti i duplicati delle rotte tra due aereoporti
-# Prendo solo le rotte che hanno stops = 0 (ossia solo rotte dirette senza scalo)
-
-# Poi faccio una funzione che converte una tupla (partenza, destinazione) nella sua distanza con la formula
-
+# Caricamento delle rotte:
+# Escludo tutti i duplicati delle rotte tra due aereoporti
+# Vengono prese solo le rotte che hanno stops = 0 (ossia solo rotte dirette senza scalo)
 
 @dataclass
 class Airport:
-    dataset_id: int
-    new_id: int
+    dataset_id: int             # Identificatore Univoco fornito da OpenFlights
+    new_id: int                 # Identificatore univoco incrementale calcolato dal programma per facilitare la creazione della matrice adiacenza
     name: str
     city: str
     country: str
@@ -92,14 +87,11 @@ class Route:
     company: str
     airline_id: int
     source_name: str
-    src_dataset_id: int             # Id of the source airport using the dataset one
+    src_dataset_id: int             # Id dell'aereoporto sorgente fornito dal dataset
     destination_name: str
     dest_dataset_id: int
-    sd: tuple[int, int]             # Tuple with source-destination using program-generated ids
+    sd: tuple[int, int]             # Tupla sorgente-destinazione che utilizza gli id interni generati dal nostro programma
     stops: int
-
-def clear(input: str) -> str:
-    return input.replace("\"", "")
 
 def load_european_airports() -> list[Airport]:
     """Load all airports of european cities"""
@@ -109,15 +101,15 @@ def load_european_airports() -> list[Airport]:
         airports = []
         id = 0
         for row in reader:
-            country = clear(row[3])
+            country = row[3]
             if country not in included_countries:
                 continue
 
             airports.append(Airport(
                 dataset_id= int(row[0]),
                 new_id = id,                # Each airport has his own new id
-                name=clear(row[1]),
-                city=clear(row[2]),
+                name=row[1],
+                city=row[2],
                 country=country,
                 latitude=float(row[6]),
                 longitude=float(row[7]),
@@ -131,8 +123,9 @@ def load_european_airports() -> list[Airport]:
 
 def load_routes(all_airports: list[Airport]) -> list[Route]:
     """
-    Load all routes from airport A to B ensuring that there are no stops between them and that they belong only to the list we want to work with
-    :param all_airports: List of all the airports we work with
+    Carica tutte le rotte presenti sul file, assicurandosi che arrivino e partano da aereoporti europei e che non richiedano fermate
+    (solo rotte dirette senza scalo)
+    :param all_airports: Lista di tutti gli aereoporti disponibili
     :return:
     """
     f = open("input/routes.dat")
@@ -157,7 +150,7 @@ def load_routes(all_airports: list[Airport]) -> list[Route]:
                         destination_name=row[4],
                         dest_dataset_id=d,
                         stops=stops,
-                        sd=(get_airport_with_dataset_id(s, all_airports).new_id, get_airport_with_dataset_id(d, all_airports).new_id)
+                        sd=(get_airport_with_dataset_id(s, all_airports).new_id, get_airport_with_dataset_id(d, all_airports).new_id)   # Mappa gli id forniti da OpenFlights (che contengono dei buchi) con gli id interni generati dal programma (sicuramente incrementali e senza buchi)
                     ))
 
         return routes
@@ -166,7 +159,6 @@ def load_routes(all_airports: list[Airport]) -> list[Route]:
 
 def get_airport_with_dataset_id(id: int, a: list[Airport]) -> Airport | None:
     return list(filter(lambda t: t.dataset_id == id, a))[0]
-
 
 def get_airport_with_internal_id(genid: int, a: list[Airport]) -> Airport | None:
     return list(filter(lambda t: t.new_id == genid, a))[0]
@@ -189,15 +181,18 @@ def calc_distance(s_data: Airport, d_data: Airport) -> float:
 
 def create_graph(airports: list[Airport], routes: list[Route]):
     """
-    Create the graph and return the adjacency matrix
-    :param airports:
-    :param routes:
-    :return:
+    Crea il grafo e restituisce la matrice di adiacenza (sorgente-destinazione) con le distanze in linea d'aria associate alle rotte
+    disponibili per ogni aereoporto
+
+    Nota: considera la prima rotta disponibile tra i due aereoporti, non gestisce il caso in cui ci siano più rotte disponibili
+    :param airports: Lista di tutti gli aereoporti
+    :param routes: Lista di tutte le rotte
+    :return: Matrice di adiacenza
     """
     tot_airports = len(airports)
     # Creo una matrice identità tot_airports x tot_airports
-    matrix = np.full((tot_airports, tot_airports), -1)
-    np.fill_diagonal(matrix, 0)
+    adj_matrix = np.full((tot_airports, tot_airports), -1)
+    np.fill_diagonal(adj_matrix, 0)
 
     for route in routes:
         s = route.sd[0]         # internal id of the source airport (not the dataset one)
@@ -205,12 +200,11 @@ def create_graph(airports: list[Airport], routes: list[Route]):
         d = route.sd[1]         # internal id of the destination airport (not the dataset one)
         d_data = get_airport_with_internal_id(d, airports)
 
-        if matrix[s][d] == -1:
-            matrix[s][d] = calc_distance(s_data, d_data)
+        if adj_matrix[s][d] == -1:
+            adj_matrix[s][d] = calc_distance(s_data, d_data)
 
-    return matrix
+    return adj_matrix
 
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     european_airports = load_european_airports()
 
@@ -221,5 +215,9 @@ if __name__ == '__main__':
     routes = load_routes(european_airports)
     print(f"Loaded {len(routes)} routes")
 
+    t1 = time.time()
     matrix = create_graph(european_airports, routes)
+    t2 = time.time()
+    el = t2 - t1
     print(matrix)
+    print(f"Adjacency matrix loaded in {el} s ")
