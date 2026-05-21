@@ -3,6 +3,8 @@ import numpy as np
 import math
 import csv
 import time
+from PIL import Image
+import matplotlib.pyplot as plt
 
 # Lista con i nomi di tutti i paesi europei che vogliamo includere
 included_countries = [
@@ -221,3 +223,14 @@ if __name__ == '__main__':
     el = t2 - t1
     print(matrix)
     print(f"Adjacency matrix loaded in {el} s ")
+
+    img = np.asarray(Image.open('./input/Europa-it-politica-coloured-2000.png'))
+    h, w = img.shape[:2]
+
+    scale = 0.1
+    figsize = (w * scale, h * scale)
+    fig, ax = plt.subplots(figsize=figsize)
+    ax.imshow(img)
+    ax.axis("off")
+
+    plt.show()
