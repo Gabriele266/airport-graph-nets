@@ -5,6 +5,7 @@ import csv
 import time
 from PIL import Image
 import matplotlib.pyplot as plt
+import  matplotlib
 
 # Lista con i nomi di tutti i paesi europei che vogliamo includere
 included_countries = [
@@ -122,6 +123,7 @@ def load_european_airports() -> list[Airport]:
         return airports
     except ValueError as e:
         print(e)
+        return []
 
 def load_routes(all_airports: list[Airport]) -> list[Route]:
     """
@@ -158,6 +160,7 @@ def load_routes(all_airports: list[Airport]) -> list[Route]:
         return routes
     except ValueError as e:
         print(e)
+        return []
 
 def get_airport_with_dataset_id(id: int, a: list[Airport]) -> Airport | None:
     return list(filter(lambda t: t.dataset_id == id, a))[0]
@@ -197,32 +200,32 @@ def create_graph(airports: list[Airport], routes: list[Route]):
     np.fill_diagonal(adj_matrix, 0)
 
     for route in routes:
-        s = route.sd[0]         # internal id of the source airport (not the dataset one)
+        s = route.sd[0]         # Id interno dell'aereoporto di partenza (non quello del dataset)
         s_data = get_airport_with_internal_id(s, airports)
-        d = route.sd[1]         # internal id of the destination airport (not the dataset one)
+        d = route.sd[1]
         d_data = get_airport_with_internal_id(d, airports)
 
         if adj_matrix[s][d] == -1:
-            adj_matrix[s][d] = calc_distance(s_data, d_data)
+            adj_matrix[s][d] = calc_distance(s_data, d_data) / 1000         # Tutte le distanze sono in km
 
     return adj_matrix
 
 if __name__ == '__main__':
-    european_airports = load_european_airports()
+    matplotlib.use("TkAgg")                     # Configura matplot per aprire una nuova finestra e permettere la visualizzazione del grafico
+    european_airports: list[Airport] = load_european_airports()
 
-    print("European airports alghorithm by Gabriele & Umberto")
+    print("Algoritmi sulla connettività degli aereoporti europei by Gabriele & Umberto")
     print(f"{len(european_airports)}")
     print(european_airports)
 
     routes = load_routes(european_airports)
-    print(f"Loaded {len(routes)} routes")
+    print(f"Caricate {len(routes)} rotte")
 
     t1 = time.time()
     matrix = create_graph(european_airports, routes)
     t2 = time.time()
     el = t2 - t1
-    print(matrix)
-    print(f"Adjacency matrix loaded in {el} s ")
+    print(f"Matrice di adiacenza caricata in {el} s ")
 
     img = np.asarray(Image.open('./input/Europa-it-politica-coloured-2000.png'))
     h, w = img.shape[:2]
