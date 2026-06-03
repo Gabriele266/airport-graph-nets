@@ -686,6 +686,8 @@ def dfs_shortest_path(source_id: int, destination_id: int, adj_matrix) -> list[i
     # Altrimenti per ogni nodo ripetere la cosa
     explore_adiacent(source_id, [source_id], adj_matrix, destination_id, paths)
 
+    # Ricerco il percorso minimo scorrendo tutti i percorsi e cercando quello che richiede meno scali
+    # Alternativamente potrei scorrerli e cercare quello che percorre la distanza minore
     shortest_path = [0, 0, 0, 0, 0, 0, 0, 0, 0]         # Inizializzo con un vettore più lungo del più lungo dei percorsi che posso trovare
     for index, path in enumerate(paths):
         if len(path) < len(shortest_path):
@@ -732,14 +734,13 @@ def explore_adiacent(node: int,
         return
 
     for node_index, distance in enumerate(adj_matrix[node]):
-        if distance <= 0:
+        if distance <= 0:                                       # Significa che i due nodi non sono connessi oppure sono lo stesso nodo
             continue
 
-        if node_index == destination_id:
-            previous_explored_nodes.append(node_index)
-            paths_found.append(previous_explored_nodes)         # Aggiungo alla lista dei percorsi trovati
-        elif node_index not in previous_explored_nodes:
-            explore_adiacent(node_index, (previous_explored_nodes + [node_index]), adj_matrix, destination_id, paths_found)
+        if node_index == destination_id:                        # Ho trovato un nuovo percorso che parte da A e arriva a B
+            paths_found.append(previous_explored_nodes + [node_index])         # Aggiungo alla lista dei percorsi trovati
+        elif node_index not in previous_explored_nodes:         # Nuovo nodo che posso raggiungere e che non ho ancora esplorato
+            explore_adiacent(node_index, (previous_explored_nodes + [node_index]), adj_matrix, destination_id, paths_found)         # Ri-eseguo l'esplorazione sul nodo chiamando ricorsivamente
 
 # ============================================================
 # PROGRAMMA PRINCIPALE
@@ -837,13 +838,14 @@ if __name__ == '__main__':
     # ------------------------------------------------------------
     path = bfs_shortest_path(matrix, partenza, arrivo)
     t2 = time.time()
-    print(f"Tempo impegato tramite algoritmo BFS: {t2 - t1} secondi")
+    r1 = t2 - t1
+    print(f"Tempo impegato tramite algoritmo BFS: {r1} secondi")
 
     if path is None:
         print("\nNon esiste un percorso tra i due aeroporti.")
     else:
         print_path(path, european_airports)
-        print(f"Distanza totale percorso: {calculate_path_distance(path, matrix)}")
+        print(f"Distanza totale percorso: {calculate_path_distance(path, matrix)} km")
     print()
 
     # ------------------------------------------------------------
@@ -852,14 +854,16 @@ if __name__ == '__main__':
     t1 = time.time()
     path2 = dfs_shortest_path(partenza, arrivo, matrix)
     t2 = time.time()
-    print(f"Tempo impiegato utilizzando il DFS: {t2 - t1} secondi")
+    r2 = t2 - t1
+    print(f"Tempo impiegato utilizzando il DFS: {r2} secondi")
     print(f"Soluzione del DFS: ")
     if path is None:
         print("\nNon esiste un percorso tra i due aeroporti con questo algoritmo.")
     else:
         print_path(path2, european_airports)
-        print(f"Distanza totale percorso 2: {calculate_path_distance(path2, matrix)}")
+        print(f"Distanza totale percorso 2: {calculate_path_distance(path2, matrix)} km")
     print()
+    print(f"Ratio del tempo di esecuzione: {(r1/r2) * 100}%")
     # ------------------------------------------------------------
     # 8. Visualizzazione mappa
     # ------------------------------------------------------------
