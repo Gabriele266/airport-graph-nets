@@ -8,6 +8,7 @@ import time
 from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib
+import sys
 
 
 # ============================================================
@@ -415,7 +416,7 @@ def bfs_shortest_path(adj_matrix, source_id: int, destination_id: int) -> list[i
         return [source_id]
 
     # deque e una coda efficiente.
-    # BFS usa una coda FIFO: il primo inserito e il primo estratto.
+    # BFS usa una coda FIFO: il primo inserito e' il primo estratto.
     queue = deque([source_id])
 
     # visited contiene gli aeroporti gia visitati.
@@ -666,6 +667,79 @@ def search_airports_by_city(airports: list[Airport], component: set[int]) -> Non
     if not found:
         print("Nessun aeroporto trovato con questa ricerca.")
 
+def dfs_shortest_path(source_id: int, destination_id: int, adj_matrix) -> list[int] | None:
+    """
+    Ricerca del cammino minimo tra due aereoporti tramite algoritmo DFS.
+    L'implementazione è ricorsiva
+    :return: Una lista con il percorso minimo tra i due aereoporti oppure None se non è presente un percorso
+    """
+
+    # Caso banale: partenza e arrivo coincidono.
+    if source_id == destination_id:
+        return [source_id]
+
+    paths: list[list[int]] = []     # Dizionario con la lista di tutti i percorsi trovati che portano da A a B
+                                        # Ogni percorso è composto da una lista degli ID
+    # Trovare i nodi adiacenti ad A
+    # Se non ci sono adiacenti, la ricorsione termina e il percorso non viene aggiunto
+    # Per ogni nodo adiacente, vedere se è B --> In tal caso il percorso è finito e posso aggiungerlo alla lista
+    # Altrimenti per ogni nodo ripetere la cosa
+    explore_adiacent(source_id, [source_id], adj_matrix, destination_id, paths)
+
+    shortest_path = [0, 0, 0, 0, 0, 0, 0, 0, 0]         # Inizializzo con un vettore più lungo del più lungo dei percorsi che posso trovare
+    for index, path in enumerate(paths):
+        if len(path) < len(shortest_path):
+            shortest_path = path
+
+    return shortest_path
+
+def calculate_path_distance(path: list[int], adj_matrix)-> float:
+    """
+    Calcola la distanza totale percorsa in linea d'aria utilizzando questo path
+    :param path: Lista di id degli aereoporti da seguire
+    :param adj_matrix: Matrice di adiancenza
+    :return: Distanza totale del percorso in linea d'aria in chilometri
+    """
+    total_airports_in_path = len(path)      # Numero totale di aereoporti nel percorso
+    if total_airports_in_path == 0:
+        return 0
+
+    d = 0
+    previous = path[0]
+    for i in range(1, total_airports_in_path):
+        d += adj_matrix[previous][path[i]]
+        previous = path[i]
+
+    return d
+
+def explore_adiacent(node: int,
+                     previous_explored_nodes: list[int],
+                     adj_matrix,
+                     destination_id: int,
+                     paths_found: list[list[int]]
+                     ):
+    """
+    Funzione ricorsiva che viene chiamata per esplorare tramite DFS il grafo delle connessioni tra gli aereoporti
+    :param node:
+    :param previous_explored_nodes:
+    :param adj_matrix:
+    :param destination_id:
+    :param paths_found:
+    :return:
+    """
+
+    if len(previous_explored_nodes) >= 4:
+        return
+
+    for node_index, distance in enumerate(adj_matrix[node]):
+        if distance <= 0:
+            continue
+
+        if node_index == destination_id:
+            previous_explored_nodes.append(node_index)
+            paths_found.append(previous_explored_nodes)         # Aggiungo alla lista dei percorsi trovati
+        elif node_index not in previous_explored_nodes:
+            explore_adiacent(node_index, (previous_explored_nodes + [node_index]), adj_matrix, destination_id, paths_found)
 
 # ============================================================
 # PROGRAMMA PRINCIPALE
@@ -675,6 +749,7 @@ if __name__ == '__main__':
 
     # Configura matplotlib per aprire la mappa in una finestra esterna.
     matplotlib.use("TkAgg")
+    sys.setrecursionlimit(5000)
 
     print("Algoritmi sulla connettivita degli aeroporti europei by Gabriele & Umberto")
 
@@ -756,32 +831,48 @@ if __name__ == '__main__':
         print("Scegli un ID tra quelli stampati nella lista della componente principale.")
         exit()
 
+    t1 = time.time()
     # ------------------------------------------------------------
     # 6. BFS per percorso minimo
     # ------------------------------------------------------------
     path = bfs_shortest_path(matrix, partenza, arrivo)
+    t2 = time.time()
+    print(f"Tempo impegato tramite algoritmo BFS: {t2 - t1} secondi")
 
-    # ------------------------------------------------------------
-    # 7. Stampa risultato
-    # ------------------------------------------------------------
     if path is None:
         print("\nNon esiste un percorso tra i due aeroporti.")
     else:
         print_path(path, european_airports)
+        print(f"Distanza totale percorso: {calculate_path_distance(path, matrix)}")
+    print()
 
+    # ------------------------------------------------------------
+    # DFS
+    # ------------------------------------------------------------
+    t1 = time.time()
+    path2 = dfs_shortest_path(partenza, arrivo, matrix)
+    t2 = time.time()
+    print(f"Tempo impiegato utilizzando il DFS: {t2 - t1} secondi")
+    print(f"Soluzione del DFS: ")
+    if path is None:
+        print("\nNon esiste un percorso tra i due aeroporti con questo algoritmo.")
+    else:
+        print_path(path2, european_airports)
+        print(f"Distanza totale percorso 2: {calculate_path_distance(path2, matrix)}")
+    print()
     # ------------------------------------------------------------
     # 8. Visualizzazione mappa
     # ------------------------------------------------------------
     # Questa parte mostra solo l'immagine della mappa.
     # Non disegna ancora il percorso sopra la mappa.
-    img = np.asarray(Image.open('./input/Europa-it-politica-coloured-2000.png'))
-    h, w = img.shape[:2]
-
-    scale = 0.1
-    figsize = (w * scale, h * scale)
-
-    fig, ax = plt.subplots(figsize=figsize)
-    ax.imshow(img)
-    ax.axis("off")
-
-    plt.show()
+    # img = np.asarray(Image.open('./input/Europa-it-politica-coloured-2000.png'))
+    # h, w = img.shape[:2]
+    #
+    # scale = 0.1
+    # figsize = (w * scale, h * scale)
+    #
+    # fig, ax = plt.subplots(figsize=figsize)
+    # ax.imshow(img)
+    # ax.axis("off")
+    #
+    # plt.show()
