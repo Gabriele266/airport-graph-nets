@@ -830,7 +830,7 @@ if __name__ == '__main__':
         exit()
 
     partenza_details = get_airport_with_internal_id(partenza, european_airports)
-    arrivo_details = get_airport_with_dataset_id(arrivo, european_airports)
+    arrivo_details = get_airport_with_internal_id(arrivo, european_airports)
     print(f"""\nHai scelto di partire dall'aereoporto di: {partenza_details.name} in {partenza_details.country}\n
 Per arrivare all'aereoporto di: {arrivo_details.name} in {arrivo_details.country}\n\n
 Confronto degli algoritmi BFS e DFS (rispettivamente):\n
