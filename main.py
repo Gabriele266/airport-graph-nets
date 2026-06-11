@@ -1,3 +1,8 @@
+# Tesina Reti e Sistemi complessi, anno 2026
+# Politecnico di Torino
+# Studenti:
+#       - Gabriele Cavallo
+#       - Umberto Sapienza
 
 from dataclasses import dataclass
 from collections import deque
@@ -5,9 +10,6 @@ import numpy as np
 import math
 import csv
 import time
-from PIL import Image
-import matplotlib.pyplot as plt
-import matplotlib
 import sys
 
 
@@ -288,9 +290,8 @@ def load_routes(all_airports: list[Airport]) -> list[Route]:
 
     return routes
 
-
 # ============================================================
-# CALCOLO DISTANZA
+# CALCOLO DISTANZA tra due coppie di coordinate
 # ============================================================
 
 def calc_distance(s_data: Airport, d_data: Airport) -> float:
@@ -325,7 +326,6 @@ def calc_distance(s_data: Airport, d_data: Airport) -> float:
     )
 
     return distance
-
 
 # ============================================================
 # CREAZIONE GRAFO
@@ -646,7 +646,7 @@ def search_airports_by_city(airports: list[Airport], component: set[int]) -> Non
     Cerca solo dentro la componente principale, cosi mostra aeroporti piu utili.
     """
 
-    city = input("\nCerca una citta nella componente principale, oppure premi INVIO per saltare: ")
+    city = input("\nCerca una citta' nella componente principale, oppure premi INVIO per saltare: ")
 
     if city.strip() == "":
         return
@@ -747,12 +747,9 @@ def explore_adiacent(node: int,
 # ============================================================
 
 if __name__ == '__main__':
+    sys.setrecursionlimit(5000)             # Aumenta il limite massimo di ricorsioni per evitare che python blocchi il DFS troppo presto
 
-    # Configura matplotlib per aprire la mappa in una finestra esterna.
-    matplotlib.use("TkAgg")
-    sys.setrecursionlimit(5000)
-
-    print("Algoritmi sulla connettivita degli aeroporti europei by Gabriele & Umberto")
+    print("\nAlgoritmi sulla connettivita' degli aeroporti europei by Gabriele & Umberto\nAnno 2026, Politecnico di Torino, corso di Reti e sistemi complessi")
 
     # ------------------------------------------------------------
     # 1. Caricamento aeroporti
@@ -763,7 +760,7 @@ if __name__ == '__main__':
     # Se non e stato caricato nessun aeroporto, il programma non puo continuare.
     # Una matrice 0 x 0 causerebbe errori nella BFS.
     if len(european_airports) == 0:
-        print("Errore: non e stato caricato nessun aeroporto.")
+        print("Errore: non e' stato caricato nessun aeroporto.")
         print("Controlla che input/airports.dat esista e che i paesi siano scritti in inglese.")
         exit()
 
@@ -774,7 +771,7 @@ if __name__ == '__main__':
     print(f"Rotte caricate: {len(routes)}")
 
     if len(routes) == 0:
-        print("Errore: non e stata caricata nessuna rotta.")
+        print("Errore: non e' stata caricata nessuna rotta.")
         print("Controlla che input/routes.dat esista e sia nel formato corretto.")
         exit()
 
@@ -823,14 +820,21 @@ if __name__ == '__main__':
     # Se uno dei due non e nella componente principale, potrebbe non esserci
     # un percorso verso l'altro.
     if partenza not in largest_component:
-        print("Errore: l'aeroporto di partenza non e nella componente principale.")
+        print("Errore: l'aeroporto di partenza non e' nella componente principale.")
         print("Scegli un ID tra quelli stampati nella lista della componente principale.")
         exit()
 
     if arrivo not in largest_component:
-        print("Errore: l'aeroporto di arrivo non e nella componente principale.")
+        print("Errore: l'aeroporto di arrivo non e' nella componente principale.")
         print("Scegli un ID tra quelli stampati nella lista della componente principale.")
         exit()
+
+    partenza_details = get_airport_with_internal_id(partenza, european_airports)
+    arrivo_details = get_airport_with_dataset_id(arrivo, european_airports)
+    print(f"""\nHai scelto di partire dall'aereoporto di: {partenza_details.name} in {partenza_details.country}\n
+Per arrivare all'aereoporto di: {arrivo_details.name} in {arrivo_details.country}\n\n
+Confronto degli algoritmi BFS e DFS (rispettivamente):\n
+    """)
 
     t1 = time.time()
     # ------------------------------------------------------------
@@ -839,8 +843,9 @@ if __name__ == '__main__':
     path = bfs_shortest_path(matrix, partenza, arrivo)
     t2 = time.time()
     r1 = t2 - t1
-    print(f"Tempo impegato tramite algoritmo BFS: {r1} secondi")
 
+    print("--------------------- Soluzione BFS ------------------")
+    print(f"Tempo impegato tramite algoritmo BFS: {r1} secondi")
     if path is None:
         print("\nNon esiste un percorso tra i due aeroporti.")
     else:
@@ -855,28 +860,12 @@ if __name__ == '__main__':
     path2 = dfs_shortest_path(partenza, arrivo, matrix)
     t2 = time.time()
     r2 = t2 - t1
+    print("--------------------- Soluzione DFS ------------------")
     print(f"Tempo impiegato utilizzando il DFS: {r2} secondi")
-    print(f"Soluzione del DFS: ")
     if path is None:
         print("\nNon esiste un percorso tra i due aeroporti con questo algoritmo.")
     else:
         print_path(path2, european_airports)
         print(f"Distanza totale percorso 2: {calculate_path_distance(path2, matrix)} km")
     print()
-    print(f"Ratio del tempo di esecuzione: {(r1/r2) * 100}%")
-    # ------------------------------------------------------------
-    # 8. Visualizzazione mappa
-    # ------------------------------------------------------------
-    # Questa parte mostra solo l'immagine della mappa.
-    # Non disegna ancora il percorso sopra la mappa.
-    # img = np.asarray(Image.open('./input/Europa-it-politica-coloured-2000.png'))
-    # h, w = img.shape[:2]
-    #
-    # scale = 0.1
-    # figsize = (w * scale, h * scale)
-    #
-    # fig, ax = plt.subplots(figsize=figsize)
-    # ax.imshow(img)
-    # ax.axis("off")
-    #
-    # plt.show()
+    print(f"Ratio dei tempi di esecuzione (tempo BFS/tempo DFS)%: {(r1/r2) * 100}%")
